@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f172a">
+<title>Научный калькулятор</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#0f172a,#1e293b);font-family:-apple-system,"Segoe UI",Roboto,sans-serif;padding:10px}
+  .calc{width:min(96vw,420px);background:#0b1220;border-radius:22px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .title{color:#38bdf8;font-weight:600;font-size:15px}
+  .mode{color:#64748b;font-size:13px;cursor:pointer;background:#1e293b;padding:6px 10px;border-radius:10px}
+  .display{background:#020617;color:#e2e8f0;border-radius:14px;padding:16px;text-align:right;margin-bottom:12px;
+    min-height:96px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+  .expr{color:#64748b;font-size:17px;min-height:20px;word-break:break-all}
+  .result{font-size:38px;font-weight:600;word-break:break-all}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  button{border:none;border-radius:13px;padding:15px 0;font-size:18px;cursor:pointer;color:#e2e8f0;background:#1e293b;transition:filter .1s;user-select:none}
+  button:active{filter:brightness(1.5)}
+  .sci{background:#16233b;color:#7dd3fc;font-size:15px}
+  .op{background:#334155;color:#38bdf8}
+  .eq{background:#2563eb;color:#fff}
+  .clear{color:#f87171}
+  .history{max-height:90px;overflow-y:auto;margin-bottom:8px;font-size:13px;color:#475569;text-align:right}
+  .history div{padding:2px 0;cursor:pointer}
+  .history div:active{color:#7dd3fc}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+  <div class="calc">
+    <div class="top">
+      <div class="title">Калькулятор</div>
+      <div class="mode" id="modeBtn" onclick="toggleMode()">Научный ▸</div>
+    </div>
+    <div class="history" id="history"></div>
+    <div class="display">
+      <div class="expr" id="expr"></div>
+      <div class="result" id="result">0</div>
+    </div>
+    <div class="grid">
+      <!-- научный ряд (скрывается) -->
+      <button class="sci sciRow hidden" onclick="fn('Math.sin(')">sin</button>
+      <button class="sci sciRow hidden" onclick="fn('Math.cos(')">cos</button>
+      <button class="sci sciRow hidden" onclick="fn('Math.tan(')">tan</button>
+      <button class="sci sciRow hidden" onclick="fn('Math.log10(')">log</button>
+      <button class="sci sciRow hidden" onclick="fn('Math.log(')">ln</button>
+
+      <button class="sci sciRow hidden" onclick="press('Math.PI')">π</button>
+      <button class="sci sciRow hidden" onclick="press('Math.E')">e</button>
+      <button class="sci sciRow hidden" onclick="fn('Math.sqrt(')">√</button>
+      <button class="sci sciRow hidden" onclick="press('**2')">x²</button>
+      <button class="sci sciRow hidden" onclick="press('**')">xʸ</button>
+
+      <!-- основной блок -->
+      <button class="op clear" onclick="clearAll()">AC</button>
+      <button class="op" onclick="del()">⌫</button>
+      <button class="op" onclick="press('(')">(</button>
+      <button class="op" onclick="press(')')">)</button>
+      <button class="op" onclick="percent()">%</button>
+
+      <button onclick="press('7')">7</button>
+      <button onclick="press('8')">8</button>
+      <button onclick="press('9')">9</button>
+      <button class="op" onclick="press('/')">÷</button>
+      <button class="op" onclick="press('*')">×</button>
+
+      <button onclick="press('4')">4</button>
+      <button onclick="press('5')">5</button>
+      <button onclick="press('6')">6</button>
+      <button class="op" onclick="press('-')">−</button>
+      <button class="op" onclick="press('+')">+</button>
+
+      <button onclick="press('1')">1</button>
+      <button onclick="press('2')">2</button>
+      <button onclick="press('3')">3</button>
+      <button onclick="press('.')">.</button>
+      <button class="eq" onclick="calculate()">=</button>
+
+      <button class="span2" style="grid-column:span 2" onclick="press('0')">0</button>
+      <button onclick="negate()">±</button>
+      <button class="sci" onclick="fact()">n!</button>
+      <button class="sci" onclick="press('/100')">⅟ₓ%</button>
+    </div>
+  </div>
+<script>
+  let expr="";
+  const exprEl=document.getElementById('expr');
+  const resEl=document.getElementById('result');
+  const histEl=document.getElementById('history');
+  let history=[];
+
+  function pretty(s){return s.replace(/\*\*/g,'^').replace(/\*/g,'×').replace(/\//g,'÷')
+    .replace(/Math\.sqrt\(/g,'√(').replace(/Math\.sin\(/g,'sin(').replace(/Math\.cos\(/g,'cos(')
+    .replace(/Math\.tan\(/g,'tan(').replace(/Math\.log10\(/g,'log(').replace(/Math\.log\(/g,'ln(')
+    .replace(/Math\.PI/g,'π').replace(/Math\.E/g,'e');}
+  function render(){exprEl.textContent=pretty(expr);}
+  function press(ch){expr+=ch;render();}
+  function fn(f){expr+=f;render();}
+  function clearAll(){expr="";resEl.textContent="0";render();}
+  function del(){expr=expr.slice(0,-1);render();}
+  function negate(){expr="-("+expr+")";render();}
+  function percent(){expr+="/100";render();}
+  function fact(){
+    try{const v=evalExpr();let n=Math.round(v),r=1;if(n<0||n>170)throw 0;for(let i=2;i<=n;i++)r*=i;show(r);expr=String(r);}catch(e){resEl.textContent="Ошибка";}
+  }
+  function evalExpr(){
+    if(!expr)return 0;
+    const v=Function('"use strict"; return ('+expr+')')();
+    if(!Number.isFinite(v))throw new Error();
+    return v;
+  }
+  function show(v){resEl.textContent=+parseFloat(v.toFixed(10));}
+  function calculate(){
+    if(!expr)return;
+    try{
+      const v=evalExpr();
+      show(v);
+      history.unshift(pretty(expr)+" = "+(+parseFloat(v.toFixed(10))));
+      history=history.slice(0,10);
+      renderHist();
+      expr=String(v);
+    }catch(e){resEl.textContent="Ошибка";}
+  }
+  function renderHist(){
+    histEl.innerHTML=history.map((h,i)=>'<div onclick="useHist('+i+')">'+h+'</div>').join('');
+  }
+  function useHist(i){const r=history[i].split(' = ')[1];expr+=r;render();}
+
+  function toggleMode(){
+    const rows=document.querySelectorAll('.sciRow');
+    const btn=document.getElementById('modeBtn');
+    const hidden=rows[0].classList.contains('hidden');
+    rows.forEach(r=>r.classList.toggle('hidden'));
+    btn.textContent=hidden?'Обычный ▸':'Научный ▸';
+  }
+
+  document.addEventListener('keydown',e=>{
+    if(/[0-9+\-*/().^]/.test(e.key)){press(e.key==='^'?'**':e.key);}
+    else if(e.key==='Enter'||e.key==='='){e.preventDefault();calculate();}
+    else if(e.key==='Backspace')del();
+    else if(e.key==='Escape')clearAll();
+  });
+</script>
+</body>
+</html>
